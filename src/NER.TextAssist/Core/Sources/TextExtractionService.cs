@@ -86,13 +86,77 @@ public sealed class TextExtractionService
 
     private static string ExtractWordContainer(OpenXmlElement root)
     {
-        var lines = root
+        var output = new StringBuilder();
+        AppendWordBlocks(root, output);
+        return output.ToString().Trim();
+    }
+
+    private static void AppendWordBlocks(OpenXmlElement container, StringBuilder output)
+    {
+        foreach (var child in container.ChildElements)
+        {
+            if (IgnoredWordVisualContainers.Contains(child.LocalName))
+            {
+                continue;
+            }
+
+            if (child is Word.Paragraph paragraph)
+            {
+                AppendOutputLine(output, ExtractWordParagraph(paragraph));
+                continue;
+            }
+
+            if (child is Word.Table table)
+            {
+                AppendWordTable(table, output);
+                continue;
+            }
+
+            // Content controls dan wrapper Word lain dapat memuat paragraph/table.
+            AppendWordBlocks(child, output);
+        }
+    }
+
+    private static void AppendWordTable(Word.Table table, StringBuilder output)
+    {
+        foreach (var row in table.Elements<Word.TableRow>())
+        {
+            var values = row.Elements<Word.TableCell>()
+                .Select(ExtractWordTableCell)
+                .ToList();
+
+            while (values.Count > 0 && string.IsNullOrWhiteSpace(values[^1]))
+            {
+                values.RemoveAt(values.Count - 1);
+            }
+
+            if (values.Any(value => !string.IsNullOrWhiteSpace(value)))
+            {
+                // Tab mempertahankan batas antarsel tanpa memasukkan simbol buatan ke corpus.
+                AppendOutputLine(output, string.Join('\t', values));
+            }
+        }
+    }
+
+    private static string ExtractWordTableCell(Word.TableCell cell)
+    {
+        var parts = cell
             .Descendants<Word.Paragraph>()
             .Where(paragraph => !IsInsideIgnoredVisualContainer(paragraph))
             .Select(ExtractWordParagraph)
             .Where(text => !string.IsNullOrWhiteSpace(text));
 
-        return string.Join(Environment.NewLine, lines);
+        return string.Join(" ", parts).Trim();
+    }
+
+    private static void AppendOutputLine(StringBuilder output, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        output.AppendLine(text.TrimEnd());
     }
 
     private static string ExtractWordParagraph(Word.Paragraph paragraph)
@@ -228,21 +292,72 @@ public sealed class TextExtractionService
 
             foreach (var row in worksheetPart.Worksheet.Descendants<Row>())
             {
-                var values = row.Elements<Cell>()
-                    .Select(cell => GetCellText(cell, sharedStrings))
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .ToArray();
-
-                if (values.Length > 0)
+                var values = ExtractXlsxRow(row, sharedStrings);
+                if (values.Count == 0 || values.All(string.IsNullOrWhiteSpace))
                 {
-                    output.AppendLine(string.Join(" ", values));
+                    continue;
                 }
+
+                // Tab menjaga batas kolom, tetapi tetap dianggap whitespace oleh engine teks nanti.
+                output.AppendLine(string.Join('\t', values));
             }
 
             output.AppendLine();
         }
 
         return output.ToString();
+    }
+
+    private static List<string> ExtractXlsxRow(Row row, SharedStringTable? sharedStrings)
+    {
+        var values = new List<string>();
+        var expectedColumn = 1;
+
+        foreach (var cell in row.Elements<Cell>())
+        {
+            var column = GetColumnIndex(cell.CellReference?.Value);
+            if (column <= 0)
+            {
+                column = expectedColumn;
+            }
+
+            while (expectedColumn < column)
+            {
+                values.Add(string.Empty);
+                expectedColumn++;
+            }
+
+            values.Add(GetCellText(cell, sharedStrings).Trim());
+            expectedColumn = column + 1;
+        }
+
+        while (values.Count > 0 && string.IsNullOrWhiteSpace(values[^1]))
+        {
+            values.RemoveAt(values.Count - 1);
+        }
+
+        return values;
+    }
+
+    private static int GetColumnIndex(string? cellReference)
+    {
+        if (string.IsNullOrWhiteSpace(cellReference))
+        {
+            return 0;
+        }
+
+        var index = 0;
+        foreach (var character in cellReference)
+        {
+            if (!char.IsLetter(character))
+            {
+                break;
+            }
+
+            index = (index * 26) + (char.ToUpperInvariant(character) - 'A' + 1);
+        }
+
+        return index;
     }
 
     private static string GetCellText(Cell cell, SharedStringTable? sharedStrings)
@@ -285,13 +400,17 @@ public sealed class TextExtractionService
             }
 
             var values = fields
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Select(value => value!.Trim())
-                .ToArray();
+                .Select(value => value?.Trim() ?? string.Empty)
+                .ToList();
 
-            if (values.Length > 0)
+            while (values.Count > 0 && string.IsNullOrWhiteSpace(values[^1]))
             {
-                output.AppendLine(string.Join(" ", values));
+                values.RemoveAt(values.Count - 1);
+            }
+
+            if (values.Any(value => !string.IsNullOrWhiteSpace(value)))
+            {
+                output.AppendLine(string.Join('\t', values));
             }
         }
 
