@@ -8,6 +8,12 @@
     <RootNamespace>NER.TextAssist</RootNamespace>
     <AssemblyName>NER.TextAssist</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\NER-Text-Assist.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\NER-Text-Assist-Icon.png" />
+    <Resource Include="Assets\NER-Text-Assist-Brand.png" />
+  </ItemGroup>
 </Project>
