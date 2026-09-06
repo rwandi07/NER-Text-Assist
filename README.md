@@ -9,6 +9,21 @@ NER Text Assist adalah aplikasi Windows desktop untuk membantu penyelesaian teks
 3. Menawarkan autocomplete berdasarkan sumber tersebut.
 4. Mengembangkan text substitution/command sebagai fitur lanjutan, bukan fokus engine awal.
 
+## Tahap 1 — Import Sumber & Ekstraksi Teks
+
+Versi `0.2.0` menambahkan fondasi source library lokal:
+
+- import beberapa file sekaligus;
+- format awal: TXT, DOCX, CSV, dan XLSX;
+- ekstraksi text-only;
+- gambar, shape, diagram, dan konten visual lain diabaikan;
+- hasil ekstraksi disimpan lokal agar tidak bergantung pada file asli saat dipakai nanti;
+- re-import file yang sama memperbarui source lama;
+- preview teks hasil ekstraksi;
+- hapus source dari library tanpa menghapus file asli.
+
+OCR, ekstraksi gambar, manual phrase/word source, autocomplete global, dan text substitution belum termasuk Tahap 1.
+
 ## Platform
 
 - Windows desktop
@@ -40,6 +55,6 @@ Lihat `docs/UPDATE-POLICY.md` untuk aturan lengkap.
 
 ## Status
 
-Tahap 0 — Fondasi & Branding.
+Tahap 1 — Import Sumber & Ekstraksi Teks.
 
-Versi awal: `0.1.0`
+Versi: `0.2.0`
