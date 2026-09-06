@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <FileVersion>0.1.0.0</FileVersion>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <Company>NER</Company>
+    <Product>NER Text Assist</Product>
+    <Authors>NER</Authors>
+    <Copyright>Copyright © NER</Copyright>
+  </PropertyGroup>
+</Project>
