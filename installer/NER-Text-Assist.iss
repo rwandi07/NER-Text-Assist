@@ -23,6 +23,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=yes
+SetupIconFile=..\src\NER.TextAssist\Assets\NER-Text-Assist.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
 
