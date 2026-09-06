@@ -18,9 +18,12 @@ dotnet publish $project `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -o $publishDir
 
+$programFilesX86 = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFilesX86)
+$programFiles = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)
+
 $isccCandidates = @(
-    "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
-    "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+    (Join-Path $programFilesX86 "Inno Setup 6\ISCC.exe"),
+    (Join-Path $programFiles "Inno Setup 6\ISCC.exe")
 )
 
 $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
