@@ -54,7 +54,7 @@
                 </StackPanel>
 
                 <Border Grid.Column="2" Padding="10,5" CornerRadius="12" Background="#EEF1F4" VerticalAlignment="Center">
-                    <TextBlock Text="v0.2.0 · Tahap 1" FontSize="11" Foreground="#50555D" />
+                    <TextBlock Text="v0.2.1 · Tahap 1" FontSize="11" Foreground="#50555D" />
                 </Border>
             </Grid>
         </Border>
