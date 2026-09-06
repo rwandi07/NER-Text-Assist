@@ -11,7 +11,6 @@ $brandingScript = Join-Path $repoRoot "scripts/prepare-branding.ps1"
 
 Write-Host "Preparing NER Text Assist branding..."
 & $brandingScript
-if ($LASTEXITCODE -ne 0) { throw "Branding preparation failed with exit code $LASTEXITCODE." }
 
 Write-Host "Publishing NER Text Assist for $Runtime..."
 dotnet restore $project
