@@ -44,10 +44,11 @@ jobs:
           $tag = "v0.2.0"
           $installer = (Get-ChildItem "installer/output/*.exe" | Select-Object -First 1).FullName
           if (-not $installer) { throw "Installer not found" }
+          $notes = "Tahap 1 - Import Sumber dan Ekstraksi Teks. TXT, DOCX, CSV, XLSX. Text-only extraction, local source library, text preview, update-safe."
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag "$installer" --clobber
           } else {
-            gh release create $tag "$installer" --title "NER Text Assist 0.2.0" --notes "Tahap 1 — Import Sumber & Ekstraksi Teks. Mendukung TXT, DOCX, CSV, dan XLSX; ekstraksi text-only; source library lokal; preview hasil ekstraksi; update-safe dari versi sebelumnya." --prerelease
+            gh release create $tag "$installer" --title "NER Text Assist 0.2.0" --notes "$notes" --prerelease
           }
