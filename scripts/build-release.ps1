@@ -20,17 +20,22 @@ dotnet publish $project `
 
 $programFilesX86 = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFilesX86)
 $programFiles = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)
+$commandIscc = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
 
-$isccCandidates = @(
+$isccCandidates = @()
+if ($commandIscc) {
+    $isccCandidates += $commandIscc.Source
+}
+$isccCandidates += @(
     (Join-Path $programFilesX86 "Inno Setup 6\ISCC.exe"),
     (Join-Path $programFiles "Inno Setup 6\ISCC.exe")
 )
 
-$iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+$iscc = $isccCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 if ($iscc) {
-    Write-Host "Building installer..."
+    Write-Host "Building installer with $iscc..."
     & $iscc $installerScript
     Write-Host "Installer created under installer/output/."
 } else {
-    Write-Warning "Inno Setup 6 was not found. Publish output is ready, but installer was not compiled."
+    throw "Inno Setup 6 compiler (ISCC.exe) was not found. Install Inno Setup 6 before building the installer."
 }
