@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace NER.TextAssist.Core;
 
 public static class AppPaths
