@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -71,12 +72,13 @@ public sealed class TextExtractionService
 
         foreach (var sheet in workbookPart.Workbook.Sheets.Elements<Sheet>())
         {
-            if (sheet.Id is null)
+            var relationshipId = sheet.Id?.Value;
+            if (string.IsNullOrWhiteSpace(relationshipId))
             {
                 continue;
             }
 
-            if (workbookPart.GetPartById(sheet.Id!) is not WorksheetPart worksheetPart)
+            if (workbookPart.GetPartById(relationshipId) is not WorksheetPart worksheetPart)
             {
                 continue;
             }
