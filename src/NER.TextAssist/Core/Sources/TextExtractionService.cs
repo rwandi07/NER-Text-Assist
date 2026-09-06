@@ -133,7 +133,7 @@ public sealed class TextExtractionService
             if (values.Any(value => !string.IsNullOrWhiteSpace(value)))
             {
                 // Tab mempertahankan batas antarsel tanpa memasukkan simbol buatan ke corpus.
-                AppendOutputLine(output, string.Join('\t', values));
+                AppendOutputLine(output, string.Join("\t", values));
             }
         }
     }
@@ -299,7 +299,7 @@ public sealed class TextExtractionService
                 }
 
                 // Tab menjaga batas kolom, tetapi tetap dianggap whitespace oleh engine teks nanti.
-                output.AppendLine(string.Join('\t', values));
+                output.AppendLine(string.Join("\t", values));
             }
 
             output.AppendLine();
@@ -410,7 +410,7 @@ public sealed class TextExtractionService
 
             if (values.Any(value => !string.IsNullOrWhiteSpace(value)))
             {
-                output.AppendLine(string.Join('\t', values));
+                output.AppendLine(string.Join("\t", values));
             }
         }
 
