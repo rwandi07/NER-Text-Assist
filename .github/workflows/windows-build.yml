@@ -41,10 +41,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v0.2.0"
+          $tag = "v0.2.1"
           $installer = (Get-ChildItem "installer/output/*.exe" | Select-Object -First 1).FullName
           if (-not $installer) { throw "Installer not found" }
-          $notes = "Tahap 1 - Import Sumber dan Ekstraksi Teks. TXT, DOCX, CSV, XLSX. Text-only extraction, local source library, text preview, update-safe."
+          $notes = "Tahap 1 fix release - improved DOCX whitespace and line-break extraction, header/footer text extraction while ignoring visual content, safer XLSX extraction, and better CSV delimiter detection."
 
           cmd /c "gh release view $tag >nul 2>nul"
           $releaseExists = $LASTEXITCODE -eq 0
@@ -52,5 +52,5 @@ jobs:
           if ($releaseExists) {
             gh release upload $tag "$installer" --clobber
           } else {
-            gh release create $tag "$installer" --title "NER Text Assist 0.2.0" --notes "$notes" --prerelease
+            gh release create $tag "$installer" --title "NER Text Assist 0.2.1" --notes "$notes" --prerelease
           }
