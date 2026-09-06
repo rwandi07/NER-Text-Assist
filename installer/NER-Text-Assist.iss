@@ -1,5 +1,5 @@
 #define MyAppName "NER Text Assist"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.2.0"
 #define MyAppPublisher "NER"
 #define MyAppExeName "NER.TextAssist.exe"
 
