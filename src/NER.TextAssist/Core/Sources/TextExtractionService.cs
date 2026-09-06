@@ -1,8 +1,10 @@
 using System.IO;
 using System.Text;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.VisualBasic.FileIO;
+using Word = DocumentFormat.OpenXml.Wordprocessing;
 
 namespace NER.TextAssist.Core.Sources;
 
@@ -11,6 +13,11 @@ public sealed class TextExtractionService
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".txt", ".docx", ".csv", ".xlsx"
+    };
+
+    private static readonly HashSet<string> IgnoredWordVisualContainers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "drawing", "pict", "object", "txbxContent"
     };
 
     public bool IsSupported(string path) =>
@@ -44,25 +51,161 @@ public sealed class TextExtractionService
     private static string ExtractDocx(string path)
     {
         using var document = WordprocessingDocument.Open(path, false);
-        var body = document.MainDocumentPart?.Document?.Body;
-        if (body is null)
+        var mainPart = document.MainDocumentPart;
+        var body = mainPart?.Document?.Body;
+        if (mainPart is null || body is null)
         {
             return string.Empty;
         }
 
-        var lines = body
-            .Descendants<DocumentFormat.OpenXml.Wordprocessing.Paragraph>()
-            .Select(paragraph => paragraph.InnerText.Trim())
+        var sections = new List<string>();
+
+        // Header/footer juga merupakan teks dokumen. Konten visual di dalamnya tetap diabaikan.
+        foreach (var headerPart in mainPart.HeaderParts)
+        {
+            var headerText = headerPart.Header is null
+                ? string.Empty
+                : ExtractWordContainer(headerPart.Header);
+
+            AddUniqueSection(sections, headerText);
+        }
+
+        AddUniqueSection(sections, ExtractWordContainer(body));
+
+        foreach (var footerPart in mainPart.FooterParts)
+        {
+            var footerText = footerPart.Footer is null
+                ? string.Empty
+                : ExtractWordContainer(footerPart.Footer);
+
+            AddUniqueSection(sections, footerText);
+        }
+
+        return string.Join(Environment.NewLine, sections);
+    }
+
+    private static string ExtractWordContainer(OpenXmlElement root)
+    {
+        var lines = root
+            .Descendants<Word.Paragraph>()
+            .Where(paragraph => !IsInsideIgnoredVisualContainer(paragraph))
+            .Select(ExtractWordParagraph)
             .Where(text => !string.IsNullOrWhiteSpace(text));
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string ExtractWordParagraph(Word.Paragraph paragraph)
+    {
+        var output = new StringBuilder();
+
+        foreach (var child in paragraph.ChildElements)
+        {
+            AppendWordElementText(child, output);
+        }
+
+        return output.ToString().Trim();
+    }
+
+    private static void AppendWordElementText(OpenXmlElement element, StringBuilder output)
+    {
+        if (IgnoredWordVisualContainers.Contains(element.LocalName))
+        {
+            return;
+        }
+
+        if (element is Word.Text text)
+        {
+            output.Append(text.Text);
+            return;
+        }
+
+        switch (element.LocalName)
+        {
+            // Paragraph.InnerText menghilangkan tab Word. Ini yang sebelumnya dapat
+            // menghasilkan teks seperti "Menimbang:Bahwa".
+            case "tab":
+            case "ptab":
+                AppendSpace(output);
+                return;
+
+            case "br":
+            case "cr":
+                AppendLineBreak(output);
+                return;
+
+            case "noBreakHyphen":
+                output.Append('-');
+                return;
+        }
+
+        foreach (var child in element.ChildElements)
+        {
+            AppendWordElementText(child, output);
+        }
+    }
+
+    private static bool IsInsideIgnoredVisualContainer(OpenXmlElement element)
+    {
+        var ancestor = element.Parent;
+        while (ancestor is not null)
+        {
+            if (IgnoredWordVisualContainers.Contains(ancestor.LocalName))
+            {
+                return true;
+            }
+
+            ancestor = ancestor.Parent;
+        }
+
+        return false;
+    }
+
+    private static void AppendSpace(StringBuilder output)
+    {
+        if (output.Length > 0 && !char.IsWhiteSpace(output[^1]))
+        {
+            output.Append(' ');
+        }
+    }
+
+    private static void AppendLineBreak(StringBuilder output)
+    {
+        if (output.Length == 0)
+        {
+            return;
+        }
+
+        if (output[^1] != '\n' && output[^1] != '\r')
+        {
+            output.AppendLine();
+        }
+    }
+
+    private static void AddUniqueSection(List<string> sections, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        if (!sections.Contains(text, StringComparer.Ordinal))
+        {
+            sections.Add(text);
+        }
     }
 
     private static string ExtractXlsx(string path)
     {
         using var document = SpreadsheetDocument.Open(path, false);
         var workbookPart = document.WorkbookPart;
-        if (workbookPart?.Workbook?.Sheets is null)
+        if (workbookPart is null)
+        {
+            return string.Empty;
+        }
+
+        var sheets = workbookPart.Workbook.Sheets;
+        if (sheets is null)
         {
             return string.Empty;
         }
@@ -70,7 +213,7 @@ public sealed class TextExtractionService
         var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable;
         var output = new StringBuilder();
 
-        foreach (var sheet in workbookPart.Workbook.Sheets.Elements<Sheet>())
+        foreach (var sheet in sheets.Elements<Sheet>())
         {
             var relationshipId = sheet.Id?.Value;
             if (string.IsNullOrWhiteSpace(relationshipId))
@@ -157,13 +300,56 @@ public sealed class TextExtractionService
 
     private static string DetectDelimiter(string path)
     {
-        var firstLine = File.ReadLines(path)
-            .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line)) ?? string.Empty;
+        var sampleLines = File.ReadLines(path)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Take(20)
+            .ToArray();
 
-        var candidates = new[] { ",", ";", "\t" };
-        return candidates
-            .OrderByDescending(candidate => firstLine.Count(character => character == candidate[0]))
+        if (sampleLines.Length == 0)
+        {
+            return ",";
+        }
+
+        var candidates = new[] { ',', ';', '\t' };
+        var best = candidates
+            .Select(candidate => new
+            {
+                Delimiter = candidate,
+                Score = sampleLines.Sum(line => CountDelimiterOutsideQuotes(line, candidate))
+            })
+            .OrderByDescending(result => result.Score)
             .First();
+
+        return best.Score == 0 ? "," : best.Delimiter.ToString();
+    }
+
+    private static int CountDelimiterOutsideQuotes(string line, char delimiter)
+    {
+        var count = 0;
+        var insideQuotes = false;
+
+        for (var index = 0; index < line.Length; index++)
+        {
+            var character = line[index];
+            if (character == '"')
+            {
+                if (insideQuotes && index + 1 < line.Length && line[index + 1] == '"')
+                {
+                    index++;
+                    continue;
+                }
+
+                insideQuotes = !insideQuotes;
+                continue;
+            }
+
+            if (!insideQuotes && character == delimiter)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static string Normalize(string text)
@@ -175,7 +361,9 @@ public sealed class TextExtractionService
 
         var normalized = text
             .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n');
+            .Replace('\r', '\n')
+            .Replace('\u00A0', ' ')
+            .Replace("\u00AD", string.Empty, StringComparison.Ordinal);
 
         var lines = normalized
             .Split('\n')
