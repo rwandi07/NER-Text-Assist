@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -26,9 +29,25 @@ jobs:
         shell: powershell
         run: ./scripts/build-release.ps1
 
-      - name: Upload installer
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: NER-Text-Assist-Windows
           path: installer/output/*.exe
           if-no-files-found: error
+
+      - name: Publish permanent GitHub release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v0.1.0"
+          $installer = (Get-ChildItem "installer/output/*.exe" | Select-Object -First 1).FullName
+          if (-not $installer) { throw "Installer not found" }
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag "$installer" --clobber
+          } else {
+            gh release create $tag "$installer" --title "NER Text Assist 0.1.0" --notes "Tahap 0 — Fondasi & Branding. Windows installer dengan branding resmi NER Text Assist dan fondasi update-safe." --prerelease
+          }
