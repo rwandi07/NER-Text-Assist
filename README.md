@@ -11,12 +11,16 @@ NER Text Assist adalah aplikasi Windows desktop untuk membantu penyelesaian teks
 
 ## Tahap 1 — Import Sumber & Ekstraksi Teks
 
-Versi `0.2.0` menambahkan fondasi source library lokal:
+Versi `0.2.1` menyempurnakan fondasi source library lokal:
 
 - import beberapa file sekaligus;
 - format awal: TXT, DOCX, CSV, dan XLSX;
 - ekstraksi text-only;
-- gambar, shape, diagram, dan konten visual lain diabaikan;
+- gambar, shape, diagram, text box/visual container, dan konten visual lain diabaikan;
+- tab dan line break DOCX dipertahankan sebagai pemisah teks agar kata tidak menempel;
+- teks header/footer DOCX ikut diekstrak jika ada;
+- pembacaan workbook XLSX dibuat lebih aman terhadap workbook/sheet yang tidak lengkap;
+- deteksi delimiter CSV membaca beberapa baris dan mengabaikan delimiter yang berada di dalam quoted field;
 - hasil ekstraksi disimpan lokal agar tidak bergantung pada file asli saat dipakai nanti;
 - re-import file yang sama memperbarui source lama;
 - preview teks hasil ekstraksi;
@@ -57,4 +61,4 @@ Lihat `docs/UPDATE-POLICY.md` untuk aturan lengkap.
 
 Tahap 1 — Import Sumber & Ekstraksi Teks.
 
-Versi: `0.2.0`
+Versi: `0.2.1`
